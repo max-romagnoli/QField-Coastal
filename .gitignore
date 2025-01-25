@@ -14,6 +14,7 @@ __pycache__
 /QField.pro.user.*
 /config.pri
 /build*
+/cmake-build-debug
 /platform/android/local.properties
 /platform/android/res/values/generated.xml
 /platform/android/res/values-*_*/strings.xml

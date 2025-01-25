@@ -104,6 +104,7 @@
 #include "qfieldcloudconnection.h"
 #include "qfieldcloudprojectsmodel.h"
 #include "qfieldcloudutils.h"
+#include "scsscloudconnection.h"    // (C) 2025 QField Coastal by max-romagnoli
 #include "qfieldlocatorfilter.h"
 #include "qgismobileapp.h"
 #include "qgsgeometrywrapper.h"
@@ -503,6 +504,7 @@ void QgisMobileapp::initDeclarative( QQmlEngine *engine )
   qmlRegisterType<QFieldCloudConnection>( "org.qfield", 1, 0, "QFieldCloudConnection" );
   qmlRegisterType<QFieldCloudProjectsModel>( "org.qfield", 1, 0, "QFieldCloudProjectsModel" );
   qmlRegisterType<QFieldCloudProjectsFilterModel>( "org.qfield", 1, 0, "QFieldCloudProjectsFilterModel" );
+  qmlRegisterType<ScssCloudConnection>("com.maxxr.qfieldcoastal", 1, 0, "ScssCloudConnection");     // (C) 2025 QField Coastal by max-romagnoli
   qmlRegisterType<DeltaListModel>( "org.qfield", 1, 0, "DeltaListModel" );
   qmlRegisterType<ScaleBarMeasurement>( "org.qfield", 1, 0, "ScaleBarMeasurement" );
   qmlRegisterType<SensorListModel>( "org.qfield", 1, 0, "SensorListModel" );
@@ -568,6 +570,12 @@ void QgisMobileapp::initDeclarative( QQmlEngine *engine )
   engine->rootContext()->setContextProperty( "appVersionStr", qfield::appVersionStr );
   engine->rootContext()->setContextProperty( "gitRev", qfield::gitRev );
   engine->rootContext()->setContextProperty( "platformUtilities", PlatformUtilities::instance() );
+
+  // (C) 2025 QField Coastal by max-romagnoli
+  ScssCloudConnection *scssConnection = new ScssCloudConnection( engine );
+  scssConnection->setBaseUrl("http://127.0.0.1:8000");  // TODO: development
+  engine->rootContext()->setContextProperty( "scssConnection", scssConnection );
+  qDebug() << "ScssCloudConnection instance created:" << scssConnection;
 }
 
 void QgisMobileapp::registerGlobalVariables()

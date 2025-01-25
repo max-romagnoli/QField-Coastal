@@ -4,6 +4,7 @@ import QtQuick.Controls.Material
 import QtQuick.Layouts
 import org.qgis
 import org.qfield
+import com.maxxr.qfieldcoastal  // (C) 2025 QField Coastal by max-romagnoli
 import Theme
 
 /**
@@ -95,6 +96,18 @@ Drawer {
           iconColor: Theme.mainOverlayColor
           bgcolor: "transparent"
           onClicked: showMenu()
+        }
+
+        QfToolButton {
+          id: scssUploadButton
+          text: qsTr("Upload to SCSS Cloud")
+          iconSource: Theme.getThemeVectorIcon("ic_cloud_upload_24dp")
+          bgcolor: "transparent"
+          onClicked: {
+              const projectFile = qgisProject.fileName;
+              const projectFolder = projectFile.slice(0, projectFile.lastIndexOf("/"));
+              scssConnection.uploadProject(projectFolder);
+          }
         }
 
         QfToolButton {

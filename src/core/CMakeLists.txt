@@ -101,6 +101,7 @@ set(QFIELD_CORE_SRCS
     qfieldappauthrequesthandler.cpp
     qfieldcloudconnection.cpp
     qfieldcloudprojectsmodel.cpp
+    scsscloudconnection.cpp
     qgismobileapp.cpp
     qgsgeometrywrapper.cpp
     qgsgpkgflusher.cpp
@@ -225,6 +226,7 @@ set(QFIELD_CORE_HDRS
     qfieldappauthrequesthandler.h
     qfieldcloudconnection.h
     qfieldcloudprojectsmodel.h
+    scsscloudconnection.h
     qgismobileapp.h
     qgsgeometrywrapper.h
     qgsgpkgflusher.h
