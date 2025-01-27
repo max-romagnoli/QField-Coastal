@@ -575,7 +575,6 @@ void QgisMobileapp::initDeclarative( QQmlEngine *engine )
   ScssCloudConnection *scssConnection = new ScssCloudConnection( engine );
   scssConnection->setBaseUrl("http://127.0.0.1:8000");  // TODO: development
   engine->rootContext()->setContextProperty( "scssConnection", scssConnection );
-  qDebug() << "ScssCloudConnection instance created:" << scssConnection;
 }
 
 void QgisMobileapp::registerGlobalVariables()

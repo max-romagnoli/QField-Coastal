@@ -111,6 +111,13 @@ class ScssCloudConnection : public QObject
      */
     Q_INVOKABLE void uploadProject( const QString &projectPath );
 
+    /**
+     * \brief Join a project as a guest.
+     *
+     * \param projectSlug The project slug to join.
+     */
+    Q_INVOKABLE void joinProjectAsGuest(const QString &projectSlug);
+
   signals:
     void baseUrlChanged();
     void usernameChanged();

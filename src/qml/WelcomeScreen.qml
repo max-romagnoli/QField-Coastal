@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Particles
 import QtCore
 import org.qfield
+import com.maxxr.qfieldcoastal  // (C) 2025 QField Coastal by max-romagnoli
 import Theme
 
 /**
@@ -436,14 +437,26 @@ Page {
           width: parent.width
           spacing: 12
 
+          // (C) 2025 QField Coastal by max-romagnoli
           QfButton {
+            id: projectJoinButton
+            Layout.fillWidth: true
+            text: qsTr("Join Coastal Survey")
+    
+            onClicked: {
+              projectJoinPopup.visible = true
+            }
+          }
+
+          /* QfButton {
             id: cloudProjectButton
             Layout.fillWidth: true
             text: qsTr("QFieldCloud projects")
             onClicked: {
               showQFieldCloudScreen();
             }
-          }
+          } */
+          
           QfButton {
             id: localProjectButton
             Layout.fillWidth: true
@@ -774,6 +787,61 @@ Page {
               checked: registry.loadProjectOnLaunch
               onCheckedChanged: {
                 registry.loadProjectOnLaunch = checked;
+              }
+            }
+          }
+        }
+      }
+
+      // (C) 2025 QField Coastal by max-romagnoli
+      Popup {
+        id: projectJoinPopup
+        modal: true
+        focus: true
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
+        width: Math.min(parent.width - 40, 350)
+        height: implicitHeight
+        clip: true
+
+        ColumnLayout {
+          anchors.fill: parent
+          anchors.margins: 10
+          spacing: 6
+
+          Label {
+            text: qsTr("Join a Coastal Survey")
+            font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+            Layout.fillWidth: true
+          }
+
+          TextField {
+            id: projectSlugField
+            placeholderText: qsTr("Enter project ID (e.g. coastal-001)")
+            Layout.fillWidth: true
+            font: Theme.defaultFont
+          }
+
+          RowLayout {
+            Layout.fillWidth: true
+
+            QfButton {
+              text: qsTr("Contribute as Guest")
+              onClicked: {
+                // 1. Call the scssCloudConnection join method
+                // 2. Hide the popup
+                projectJoinPopup.visible = false
+
+                scssConnection.joinProjectAsGuest(projectSlugField.text)
+              }
+            }
+
+            QfButton {
+              text: qsTr("Cancel")
+              color: Theme.errorColor
+              onClicked: {
+                projectJoinPopup.visible = false
               }
             }
           }

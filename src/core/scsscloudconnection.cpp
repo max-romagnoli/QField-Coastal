@@ -166,6 +166,56 @@ void ScssCloudConnection::logout()
   emit tokenChanged();
 }
 
+void ScssCloudConnection::joinProjectAsGuest(const QString &projectSlug)
+{
+  if ( mBaseUrl.isEmpty() )
+  {
+    qDebug() << "Base URL not set.";
+    return;
+  }
+
+  QVariantMap payload;
+  payload.insert( "project_id", projectSlug );
+  payload.insert( "guest", true );
+
+  QNetworkReply *reply = postJson( "/api/field_manager/projects/join/", payload );
+  if ( !reply )
+  {
+    qDebug() << "Network or base URL error.";
+    return;
+  }
+
+  connect( reply, &QNetworkReply::finished, this, [this, reply]()
+  {
+    reply->deleteLater();
+
+    if ( reply->error() != QNetworkReply::NoError )
+    {
+      qDebug() << "Join project request failed:" << reply->errorString();
+      return;
+    }
+
+    QByteArray bytes = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson( bytes );
+    if ( doc.isNull() || !doc.isObject() )
+    {
+      qDebug() << "Server returned invalid JSON response.";
+      return;
+    }
+
+    QJsonObject obj = doc.object();
+    if ( obj.contains("error") )
+    {
+      qDebug() << "Error from server:" << obj.value("error").toString();
+      return;
+    }
+
+    // Otherwise success
+    // e.g. { "instance_id": 5, "instance_slug": "coastal-001-guest_abc123", ... }
+    qDebug() << "Successfully joined project. Server response:" << obj;
+  } );
+}
+
 void ScssCloudConnection::uploadProject( const QString &projectPath )
 {
   // TODO: Skip authentication check for now
