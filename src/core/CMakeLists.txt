@@ -319,6 +319,14 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "iOS")
   target_compile_options(qfield_core PRIVATE "-fobjc-arc")
 endif()
 
+# Make sure to include JlCompress headers
+target_include_directories(qfield_core PRIVATE
+    ${CMAKE_SOURCE_DIR}/external/jlcompress
+)
+
+# Link jlcompress to qfield_core so scsscloudconnection.cpp can see JlCompress.h
+target_link_libraries(qfield_core PRIVATE jlcompress)
+
 target_include_directories(
   qfield_core
   PUBLIC ${CMAKE_SOURCE_DIR}/src/core

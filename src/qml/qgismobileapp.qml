@@ -1331,6 +1331,27 @@ ApplicationWindow {
       anchors.bottomMargin: 10
     }
 
+
+    // (C) 2025 QField Coastal by max-romagnoli
+
+    PlantGuide {
+      id: plantGuidePopup
+    }
+
+    QfToolButton {
+      id: plantGuideButton
+      iconSource: Theme.getThemeVectorIcon("ic_alert_black_24dp")  
+      round: true
+      bgcolor: "transparent"
+      anchors.right: parent.right
+      anchors.top: locatorItem.bottom
+      anchors.topMargin: 8
+
+      onClicked: {
+        plantGuidePopup.open()
+      }
+    }
+
     Column {
       id: pluginsToolbar
       objectName: "pluginsToolbar"

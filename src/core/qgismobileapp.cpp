@@ -370,6 +370,7 @@ void QgisMobileapp::initDeclarative( QQmlEngine *engine )
   QResource::registerResource( QStringLiteral( "assets:/android_rcc_bundle.rcc" ) );
 #endif
   engine->addImportPath( QStringLiteral( "qrc:/qml/imports" ) );
+  engine->addImportPath( QStringLiteral( "qrc:/qml/coastal" ) );    // (C) 2025 QField Coastal by max-romagnoli
 
   qRegisterMetaType<QMetaType::Type>( "QMetaType::Type" );
 

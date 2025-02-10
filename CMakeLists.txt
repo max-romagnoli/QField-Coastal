@@ -177,6 +177,29 @@ if (ANDROID)
 endif()
 add_subdirectory(src/app)
 
+# TODO:
+# Make sure quazip is defined first
+set(QUAZIP_QT_MAJOR_VERSION 6 CACHE STRING "Qt version for QuaZip")
+add_subdirectory(${CMAKE_SOURCE_DIR}/external/quazip ${CMAKE_BINARY_DIR}/quazip_build_dir)
+
+# Now define jlcompress once at the root
+if(NOT TARGET jlcompress)
+    set(JLCOMPRESS_SOURCES ${CMAKE_SOURCE_DIR}/external/jlcompress/JlCompress.cpp)
+    add_library(jlcompress STATIC ${JLCOMPRESS_SOURCES})
+
+    target_include_directories(jlcompress
+      PUBLIC
+        ${CMAKE_SOURCE_DIR}/external/jlcompress
+        ${CMAKE_SOURCE_DIR}/external/quazip/quazip  # path to quazip.h
+    )
+
+    target_link_libraries(jlcompress 
+      PRIVATE 
+        QuaZip
+        Qt6::Core
+    )
+endif()
+
 if(WITH_SENTRY)
   add_subdirectory(src/sentry)
 endif()

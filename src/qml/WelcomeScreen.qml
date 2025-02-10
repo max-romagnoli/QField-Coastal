@@ -818,10 +818,23 @@ Page {
 
           TextField {
             id: projectSlugField
-            placeholderText: qsTr("Enter project ID (e.g. coastal-001)")
+            placeholderText: qsTr("Enter project ID (e.g. sandymount-001)")
             Layout.fillWidth: true
             font: Theme.defaultFont
           }
+
+          Label {
+            id: feedbackLabel
+            visible: false
+            text: ""
+            color: Theme.errorColor
+            font: Theme.defaultFont
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+          }
+
+          // TODO:
 
           RowLayout {
             Layout.fillWidth: true
@@ -829,11 +842,19 @@ Page {
             QfButton {
               text: qsTr("Contribute as Guest")
               onClicked: {
-                // 1. Call the scssCloudConnection join method
-                // 2. Hide the popup
-                projectJoinPopup.visible = false
+                if (projectSlugField.text.trim() === "") {
+                  feedbackLabel.text = qsTr("Project ID cannot be empty.")
+                  feedbackLabel.visible = true
+                  return
+                }
+
+                feedbackLabel.text = ""
+                feedbackLabel.visible = false
 
                 scssConnection.joinProjectAsGuest(projectSlugField.text)
+                feedbackLabel.text = qsTr("Joining project, please wait...")
+                feedbackLabel.color = Theme.mainTextColor
+                feedbackLabel.visible = true
               }
             }
 
@@ -842,11 +863,88 @@ Page {
               color: Theme.errorColor
               onClicked: {
                 projectJoinPopup.visible = false
+                feedbackLabel.text = ""
+                feedbackLabel.visible = false
               }
             }
           }
         }
       }
+
+      Connections {
+        target: scssConnection
+
+        // 1) Project join success => parse "jsonInfo" to get instance_id
+        function onJoinProjectAsGuestSuccess(jsonInfo) {
+          // Hide the popup
+          projectJoinPopup.visible = false
+
+          // Possibly parse the server's JSON object
+          if (!jsonInfo.hasOwnProperty("instance_id")) {
+            // if the response doesn't have "instance_id", show error
+            feedbackLabel.text = qsTr("No instance_id in response from server.")
+            feedbackLabel.color = Theme.errorColor
+            feedbackLabel.visible = true
+            return
+          }
+
+          // We have an instance_id -> call the zipped approach
+          let instanceId = jsonInfo.instance_id
+          console.log("Joining succeeded, instanceId =", instanceId, "Now downloading as ZIP.")
+          scssConnection.downloadProjectInstanceZipped(instanceId)
+
+          // Provide user feedback
+          feedbackLabel.text = qsTr("Joining succeeded! Now downloading project data...")
+          feedbackLabel.color = "green"
+          feedbackLabel.visible = true
+        }
+
+        function onJoinProjectAsGuestFailed(errorString) {
+          feedbackLabel.text = qsTr("Failed to join project: ") + errorString
+          feedbackLabel.color = Theme.errorColor
+          feedbackLabel.visible = true
+        }
+
+        function onDownloadInstanceSucceeded(destinationFolder, qgsFilename) {
+          feedbackLabel.text = qsTr("Project unzipped at: ") + destinationFolder
+          feedbackLabel.color = "green"
+          feedbackLabel.visible = true
+          console.log("Project unzipped at:", destinationFolder, "QGS file:", qgsFilename)
+
+          iface.loadFile(destinationFolder + "/" + qgsFilename, qgsFilename)
+        }
+
+        function onDownloadInstanceFailed(reason) {
+          feedbackLabel.text = qsTr("Download error: ") + reason
+          feedbackLabel.color = Theme.errorColor
+          feedbackLabel.visible = true
+          console.log("Download error:", reason)
+        }
+      }
+
+      // (C) 2025 QField Coastal by max-romagnoli
+      /* Connections {
+        target: scssConnection
+
+        onDownloadInstanceSucceeded: {
+          feedbackLabel.text = qsTr("Successfully joined the project.")
+          feedbackLabel.color = "green"
+          feedbackLabel.visible = true
+
+          // Optionally hide the popup after success
+          projectJoinPopup.visible = false
+
+          // Optionally trigger the download of the project
+          console.log("Project downloaded to:", destinationFolder)
+        }
+
+        // Handle failure to join
+        onDownloadInstanceFailed: {
+          feedbackLabel.text = qsTr("Failed to join project: ") + reason
+          feedbackLabel.color = Theme.errorColor
+          feedbackLabel.visible = true
+        }
+      } */
     }
   }
 

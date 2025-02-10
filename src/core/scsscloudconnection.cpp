@@ -14,17 +14,21 @@
  ******************************************************************************/
 
 #include "scsscloudconnection.h"
+#include "fileutils.h"
+#include "JlCompress.h"
 
 #include <QNetworkRequest>
 #include <QNetworkAccessManager>
 #include <QUrlQuery>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QFileInfo>
 #include <QDir>
 #include <QFile>
 #include <QHttpMultiPart>
 #include <QTimer>
+#include <QStandardPaths>
 
 ScssCloudConnection::ScssCloudConnection( QObject *parent )
   : QObject( parent )
@@ -170,6 +174,7 @@ void ScssCloudConnection::joinProjectAsGuest(const QString &projectSlug)
 {
   if ( mBaseUrl.isEmpty() )
   {
+    emit joinProjectAsGuestFailed( "Base URL not set" );
     qDebug() << "Base URL not set.";
     return;
   }
@@ -181,6 +186,7 @@ void ScssCloudConnection::joinProjectAsGuest(const QString &projectSlug)
   QNetworkReply *reply = postJson( "/api/field_manager/projects/join/", payload );
   if ( !reply )
   {
+    emit joinProjectAsGuestFailed( "Network error" );
     qDebug() << "Network or base URL error.";
     return;
   }
@@ -191,6 +197,7 @@ void ScssCloudConnection::joinProjectAsGuest(const QString &projectSlug)
 
     if ( reply->error() != QNetworkReply::NoError )
     {
+      emit joinProjectAsGuestFailed( "Network error" );
       qDebug() << "Join project request failed:" << reply->errorString();
       return;
     }
@@ -199,6 +206,7 @@ void ScssCloudConnection::joinProjectAsGuest(const QString &projectSlug)
     QJsonDocument doc = QJsonDocument::fromJson( bytes );
     if ( doc.isNull() || !doc.isObject() )
     {
+      emit joinProjectAsGuestFailed( "Invalid JSON response" );
       qDebug() << "Server returned invalid JSON response.";
       return;
     }
@@ -206,12 +214,14 @@ void ScssCloudConnection::joinProjectAsGuest(const QString &projectSlug)
     QJsonObject obj = doc.object();
     if ( obj.contains("error") )
     {
+      emit joinProjectAsGuestFailed( obj.value("error").toString() );
       qDebug() << "Error from server:" << obj.value("error").toString();
       return;
     }
 
     // Otherwise success
     // e.g. { "instance_id": 5, "instance_slug": "coastal-001-guest_abc123", ... }
+    emit joinProjectAsGuestSuccess(obj);
     qDebug() << "Successfully joined project. Server response:" << obj;
   } );
 }
@@ -334,6 +344,345 @@ void ScssCloudConnection::setAuthHeader( QNetworkRequest &request ) const
   }
 }
 
+
+/**
+ * Download project instance using manifest 
+ * */ 
+
+void ScssCloudConnection::downloadProjectInstance( int instanceId ) 
+{
+  if ( mBaseUrl.isEmpty() )
+  {
+    qDebug() << "Base URL not set, cannot download instance" << instanceId;
+    emit downloadInstanceFailed("Base URL not set");
+    return;
+  }
+
+  mCurrentInstanceId = instanceId;
+  mFilesToDownload.clear();
+  mCurrentFileIndex = 0;
+
+  const QString endpoint = QStringLiteral( "/api/field_manager/project-instances/%1/manifest" ).arg( instanceId );
+  const QString urlString = mBaseUrl + endpoint;
+  QUrl requestUrl( urlString );
+
+  QNetworkRequest request( requestUrl );
+  setAuthHeader( request );
+
+  QNetworkAccessManager *nam = new QNetworkAccessManager( this );
+  QNetworkReply *reply = nam->get( request );
+
+  connect( reply, &QNetworkReply::finished, this, &ScssCloudConnection::onManifestReplyFinished );
+}
+
+void ScssCloudConnection::downloadProjectInstanceZipped( int instanceId )
+{
+  if ( mBaseUrl.isEmpty() )
+  {
+    qDebug() << "Base URL not set, cannot download zipped instance" << instanceId;
+    emit downloadInstanceFailed("Base URL not set");
+    return;
+  }
+
+  // For example: your server returns JSON with { "qgs_filename": "coastal.qgz", "zip_data": <BASE64 STRING> }
+  QString endpoint = QStringLiteral( "/api/field_manager/project-instances/%1/download/" ).arg( instanceId );
+  QUrl requestUrl( mBaseUrl + endpoint );
+
+  QNetworkRequest request( requestUrl );
+  setAuthHeader( request );
+
+  QNetworkAccessManager *nam = new QNetworkAccessManager( this );
+  QNetworkReply *reply = nam->get( request );
+
+  connect( reply, &QNetworkReply::finished, this, [this, reply, instanceId]()
+  {
+    reply->deleteLater();
+
+    if ( reply->error() != QNetworkReply::NoError )
+    {
+      qDebug() << "Zipped download request failed:" << reply->errorString();
+      emit downloadInstanceFailed( reply->errorString() );
+      return;
+    }
+
+    // 1) Parse JSON to retrieve "qgs_filename" and base64 "zip_data"
+    QByteArray rawJson = reply->readAll();
+    QJsonDocument doc = QJsonDocument::fromJson(rawJson);
+    if ( doc.isNull() || !doc.isObject() )
+    {
+      qDebug() << "Server response is not valid JSON";
+      emit downloadInstanceFailed("Invalid JSON response");
+      return;
+    }
+
+    QJsonObject obj = doc.object();
+    if ( !obj.contains("zip_data") || !obj.contains("qgs_filename") )
+    {
+      qDebug() << "JSON missing zip_data or qgs_filename";
+      emit downloadInstanceFailed("Missing fields in JSON (zip_data / qgs_filename)");
+      return;
+    }
+
+    QString qgsFilename = obj.value("qgs_filename").toString();
+    if ( qgsFilename.isEmpty() )
+    {
+      qgsFilename = "coastal.qgz"; // fallback
+    }
+
+    // The ZIP data in base64 form
+    QString zipDataBase64 = obj.value("zip_data").toString();
+    QByteArray zipData = QByteArray::fromBase64( zipDataBase64.toUtf8() );
+    if ( zipData.isEmpty() )
+    {
+      qDebug() << "Base64 decode returned empty ZIP data";
+      emit downloadInstanceFailed("Empty or invalid ZIP data");
+      return;
+    }
+
+    // 2) Create local folder structure
+    QString baseDir = QStandardPaths::writableLocation( QStandardPaths::AppDataLocation );
+    if ( baseDir.isEmpty() )
+    {
+      baseDir = QDir::homePath() + "/.local/share/QFieldCoastal";
+    }
+
+    QDir dir( baseDir + "/coastal_projects" );
+    if ( !dir.exists() )
+      dir.mkpath( dir.path() );
+
+    QString zipFilePath = dir.path() + QStringLiteral( "/instance_%1.zip" ).arg( instanceId );
+
+    // 3) Write the decoded ZIP bytes to disk
+    QFile outFile( zipFilePath );
+    if ( !outFile.open( QFile::WriteOnly | QFile::Truncate ) )
+    {
+      qDebug() << "Could not open zip file for writing:" << zipFilePath;
+      emit downloadInstanceFailed("Failed to open .zip for writing");
+      return;
+    }
+    outFile.write( zipData );
+    outFile.close();
+
+    qDebug() << "Saved zipped project to:" << zipFilePath;
+
+    // 4) Unzip to final location
+    QString destinationFolder = dir.path() + QStringLiteral( "/instance_%1" ).arg( instanceId );
+
+    // Remove old if exists
+    QDir destDir( destinationFolder );
+    if ( destDir.exists() )
+    {
+      destDir.removeRecursively();
+    }
+
+    // Use JlCompress
+    QStringList extracted = JlCompress::extractDir(zipFilePath, destinationFolder);
+    if ( extracted.isEmpty() )
+    {
+      qDebug() << "Failed to unzip the project instance to:" << destinationFolder;
+      emit downloadInstanceFailed("Failed to unzip");
+      return;
+    }
+
+    qDebug() << "Project instance unzipped at:" << destinationFolder;
+
+    // 5) Emit success, pass qgsFilename so QML can open it
+    emit downloadInstanceSucceeded( destinationFolder, qgsFilename );
+  } );
+}
+
+bool ScssCloudConnection::unzipFile( const QString &zipFilePath, const QString &destinationPath )
+{
+  qDebug() << "Unzipping file:" << zipFilePath << "->" << destinationPath;
+  QStringList extractedFiles = JlCompress::extractDir( zipFilePath, destinationPath );
+
+  if ( extractedFiles.isEmpty() )
+  {
+    qDebug() << "JlCompress::extractDir returned an empty list, indicating failure for:" << zipFilePath;
+    return false;
+  }
+
+  return true;
+}
+
+void ScssCloudConnection::onManifestReplyFinished()
+{
+  QNetworkReply *reply = qobject_cast<QNetworkReply *>( sender() );
+  if ( !reply )
+    return;
+
+  reply->deleteLater();
+
+  if ( reply->error() != QNetworkReply::NoError )
+  {
+    qDebug() << "Manifest request failed:" << reply->errorString();
+    emit downloadInstanceFailed( reply->errorString() );
+    return;
+  }
+
+  // Parse the manifest JSON
+  const QByteArray bytes = reply->readAll();
+  QJsonDocument doc = QJsonDocument::fromJson( bytes );
+  if ( doc.isNull() || !doc.isObject() )
+  {
+    qDebug() << "Server returned invalid manifest JSON.";
+    emit downloadInstanceFailed( "Invalid JSON manifest" );
+    return;
+  }
+
+  QJsonObject rootObj = doc.object();
+  if ( !rootObj.contains("files") || !rootObj.value("files").isArray() )
+  {
+    qDebug() << "Manifest JSON missing 'files' array.";
+    emit downloadInstanceFailed( "Manifest missing files array" );
+    return;
+  }
+
+  QJsonArray filesArr = rootObj.value("files").toArray();
+  if ( filesArr.isEmpty() )
+  {
+    qDebug() << "Manifest indicates no files to download. Possibly an empty project?";
+    emit downloadInstanceSucceeded( QString(), "TODO:" );
+    return;
+  }
+
+  // Convert array items to a simpler structure in mFilesToDownload
+  for ( const QJsonValue &val : filesArr )
+  {
+    if ( val.isObject() )
+    {
+      QJsonObject fObj = val.toObject();
+      // We assume something like: { "path": "collection/invasive.gpkg", "checksum": "abc123", ... }
+      QVariantMap map = fObj.toVariantMap();
+      mFilesToDownload.append( map );
+    }
+  }
+
+  // Prepare local folder for the instance
+  QString baseDir = QStandardPaths::writableLocation( QStandardPaths::AppDataLocation );
+  if ( baseDir.isEmpty() )
+  {
+    baseDir = QDir::homePath() + "/.local/share/QFieldCoastal"; // fallback
+  }
+
+  QDir rootDir( baseDir + "/coastal_projects" );
+  if ( !rootDir.exists() )
+  {
+    rootDir.mkpath( rootDir.path() );
+  }
+
+  mDestinationFolder = rootDir.path() + QStringLiteral( "/instance_%1" ).arg( mCurrentInstanceId );
+
+  // Optionally remove old data or do partial checks for old files
+  QDir destDir( mDestinationFolder );
+  if ( destDir.exists() )
+  {
+    destDir.removeRecursively();
+  }
+  destDir.mkpath( mDestinationFolder );
+
+  // Start downloading each file in turn
+  startFileDownloads();
+}
+
+void ScssCloudConnection::startFileDownloads()
+{
+  if ( mFilesToDownload.isEmpty() )
+  {
+    // no files => done
+    emit downloadInstanceSucceeded( mDestinationFolder , ""); // TODO:
+    return;
+  }
+
+  mCurrentFileIndex = 0;
+  downloadNextFile();  // triggers the first file download
+}
+
+void ScssCloudConnection::downloadNextFile()
+{
+  if ( mCurrentFileIndex >= mFilesToDownload.size() )
+  {
+    // All files done
+    qDebug() << "All manifest files downloaded for instance" << mCurrentInstanceId;
+    emit downloadInstanceSucceeded( mDestinationFolder, "" );   // TODO:
+    return;
+  }
+
+  const QVariantMap fileInfo = mFilesToDownload.at( mCurrentFileIndex );
+  const QString relPath = fileInfo.value("path").toString();
+  if ( relPath.isEmpty() )
+  {
+    // skip or handle
+    mCurrentFileIndex++;
+    downloadNextFile();
+    return;
+  }
+
+  // Build a GET request for the file
+  // e.g. /api/field_manager/project-instances/<id>/file?path=relPath
+  QString endpoint = QStringLiteral("/api/field_manager/project-instances/%1/file").arg( mCurrentInstanceId );
+  QUrl requestUrl( mBaseUrl + endpoint );
+
+  // Add query param for the file path
+  QUrlQuery query;
+  query.addQueryItem("path", relPath);
+  requestUrl.setQuery(query);
+
+  QNetworkRequest request( requestUrl );
+  setAuthHeader( request );
+
+  QNetworkAccessManager *nam = new QNetworkAccessManager( this );
+  QNetworkReply *reply = nam->get( request );
+
+  connect( reply, &QNetworkReply::finished, this, &ScssCloudConnection::onFileReplyFinished );
+}
+
+void ScssCloudConnection::onFileReplyFinished()
+{
+  QNetworkReply *reply = qobject_cast<QNetworkReply *>( sender() );
+  if ( !reply )
+    return;
+
+  reply->deleteLater();
+
+  if ( reply->error() != QNetworkReply::NoError )
+  {
+    qDebug() << "File download failed:" << reply->errorString();
+    emit downloadInstanceFailed( reply->errorString() );
+    return;
+  }
+
+  // Identify which file we were downloading
+  const QVariantMap fileInfo = mFilesToDownload.at( mCurrentFileIndex );
+  const QString relPath = fileInfo.value("path").toString();
+
+  // Build local path in mDestinationFolder
+  QString localFilePath = mDestinationFolder + "/" + relPath;
+  QFileInfo fi( localFilePath );
+  QDir localDir( fi.absoluteDir() );
+  if ( !localDir.exists() )
+  {
+    localDir.mkpath( localDir.path() );
+  }
+
+  // Save to disk
+  if ( !saveReplyToFile( reply, localFilePath ) )
+  {
+    qDebug() << "Failed to save file to disk:" << localFilePath;
+    emit downloadInstanceFailed("Failed to save " + relPath);
+    return;
+  }
+
+  // TODO: If you want to verify checksums, do it here
+  // e.g. compare with fileInfo["checksum"]
+
+  qDebug() << "Downloaded file:" << relPath;
+
+  // Move on to the next file
+  mCurrentFileIndex++;
+  downloadNextFile();
+}
+
 QNetworkReply *ScssCloudConnection::postJson( const QString &endpoint, const QVariantMap &payload )
 {
   if ( mBaseUrl.isEmpty() )
@@ -378,4 +727,25 @@ QNetworkReply *ScssCloudConnection::getJson( const QString &endpoint, const QVar
   QNetworkAccessManager *nam = new QNetworkAccessManager( this );
   QNetworkReply *reply = nam->get( request );
   return reply;
+}
+
+bool ScssCloudConnection::saveReplyToFile( QNetworkReply *reply, const QString &targetFile )
+{
+  QFile outFile( targetFile );
+  if ( !outFile.open( QFile::WriteOnly | QFile::Truncate ) )
+  {
+    qDebug() << "Could not open file for writing:" << targetFile;
+    return false;
+  }
+
+  const QByteArray data = reply->readAll();
+  qint64 written = outFile.write( data );
+  outFile.close();
+
+  if ( written < data.size() )
+  {
+    qDebug() << "Not all data was written to:" << targetFile;
+    return false;
+  }
+  return true;
 }

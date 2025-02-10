@@ -75,6 +75,8 @@ function(create_executable)
     target_link_libraries(${exe_TARGET} PRIVATE qfield_sentry)
   endif()
 
+  target_link_libraries(qfield PRIVATE jlcompress)
+
   get_target_property(QT_TARGET_TYPE Qt::Core TYPE)
   # This should be in src/qml/CMakeLists.txt but that's not possible with Qt5.
   # Retry with Qt6 Same is in tests/CMakeLists.txt

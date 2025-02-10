@@ -118,6 +118,14 @@ class ScssCloudConnection : public QObject
      */
     Q_INVOKABLE void joinProjectAsGuest(const QString &projectSlug);
 
+    /**
+     * \brief Download a project instance.
+     * 
+     * \param instanceId The instance ID to download.
+     */
+    Q_INVOKABLE void downloadProjectInstance( int instanceId );
+    Q_INVOKABLE void downloadProjectInstanceZipped( int instanceId );
+
   signals:
     void baseUrlChanged();
     void usernameChanged();
@@ -125,6 +133,10 @@ class ScssCloudConnection : public QObject
     void tokenChanged();
     void statusChanged();
     void loginFailed( const QString &reason );
+    void joinProjectAsGuestSuccess(const QJsonObject &jsonInfo);
+    void joinProjectAsGuestFailed(const QString &reason);
+    void downloadInstanceFailed( const QString &reason );
+    void downloadInstanceSucceeded( const QString &destinationFolder, const QString &fileName );
 
   private slots:
     //! Slot called when the login network reply is finished.
@@ -142,6 +154,23 @@ class ScssCloudConnection : public QObject
 
     //! Internal method for packaging and uploading local files
     void uploadFiles( const QString &projectPath );
+
+    //! Helper to save network reply to a local file
+    bool saveReplyToFile( QNetworkReply *reply, const QString &targetFile );
+
+    // Zipped helpers
+    bool unzipFile( const QString &zipFilePath, const QString &destinationPath );
+
+    // Manifest helpers
+    void onManifestReplyFinished();
+    void startFileDownloads();
+    void downloadNextFile();
+    void onFileReplyFinished();
+
+    int mCurrentInstanceId = -1;
+    QString mDestinationFolder;
+    QList<QVariantMap> mFilesToDownload;  // each entry might have { "path": "..", "checksum": "..", ... }
+    int mCurrentFileIndex = 0;
 
     QString mBaseUrl;
     QString mUsername;
