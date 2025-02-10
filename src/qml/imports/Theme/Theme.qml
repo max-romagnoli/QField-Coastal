@@ -6,10 +6,10 @@ QtObject {
   id: object
 
   property var darkThemeColors: {
-    "mainColor": "#80cc28",
+    "mainColor": "#248CBF",
     "mainOverlayColor": "#ffffff",
-    "accentColor": "#4CAF50",
-    "accentLightColor": "#994CAF50",
+    "accentColor": "#248CBF",
+    "accentLightColor": "#99248CBF",
     "mainBackgroundColor": "#303030",
     "mainBackgroundColorSemiOpaque": "#bb303030",
     "mainTextColor": "#EEEEEE",
@@ -27,10 +27,10 @@ QtObject {
   }
 
   property var lightThemeColors: {
-    "mainColor": "#80cc28",
+    "mainColor": "#248CBF",
     "mainOverlayColor": "#ffffff",
-    "accentColor": "#4CAF50",
-    "accentLightColor": "#994CAF50",
+    "accentColor": "#248CBF",
+    "accentLightColor": "#99248CBF",
     "mainBackgroundColor": "#fafafa",
     "mainBackgroundColorSemiOpaque": "#bbfafafa",
     "mainTextColor": "#000000",
@@ -49,10 +49,10 @@ QtObject {
 
   property bool darkTheme: false
 
-  property color mainColor: "#80cc28"
+  property color mainColor: "#248CBF"
   property color mainOverlayColor: "#ffffff"
-  property color accentColor: "#4CAF50"
-  property color accentLightColor: "#994CAF50"
+  property color accentColor: "#248CBF"
+  property color accentLightColor: "#99248CBF"
 
   property color mainBackgroundColor: "#fafafa"
   property color mainBackgroundColorSemiOpaque: "#bbfafafa"
@@ -94,7 +94,7 @@ QtObject {
 
   property color accuracyBad: "#c0392b"
   property color accuracyTolerated: "orange"
-  property color accuracyExcellent: "#80cc28"
+  property color accuracyExcellent: "#248CBF"
 
   property color navigationColor: "#984ea3"
   property color navigationColorSemiOpaque: "#99984ea3"
@@ -102,7 +102,7 @@ QtObject {
 
   property color sensorBackgroundColor: "#33999999"
 
-  property color bookmarkDefault: "#80cc28"
+  property color bookmarkDefault: "#248CBF"
   property color bookmarkOrange: "orange"
   property color bookmarkRed: "#c0392b"
   property color bookmarkBlue: "#64b5f6"
@@ -111,8 +111,8 @@ QtObject {
   property color vertexColorSemiOpaque: "#40FF0000"
   property color vertexSelectedColor: "#0000FF"
   property color vertexSelectedColorSemiOpaque: "#200000FF"
-  property color vertexNewColor: "#4CAF50"
-  property color vertexNewColorSemiOpaque: "#404CAF50"
+  property color vertexNewColor: "#248CBF"
+  property color vertexNewColorSemiOpaque: "#40248CBF"
 
   property color processingPreview: '#99000000'
 
