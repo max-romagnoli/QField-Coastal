@@ -6,7 +6,7 @@ jobs:
   build-ios-sim:
     runs-on: macos-latest
     steps:
-      - name: Check out code
+      - name: Check out code 
         uses: actions/checkout@v4
 
       - name: Install dependencies
