@@ -13,6 +13,18 @@ jobs:
         run: |
           brew install cmake bison flex nasm libtool automake autoconf-archive
 
+      - name: Update vcpkg ports
+        run: |
+          # Check if the vcpkg source has already been downloaded to the build directory
+          if [ -d "/Users/runner/builddir/_deps/vcpkg-src" ]; then
+            echo "vcpkg directory found, updating..."
+            cd /Users/runner/builddir/_deps/vcpkg-src
+            git pull
+            ./vcpkg update
+          else
+            echo "vcpkg directory not found, skipping update."
+          fi
+
       - name: Configure (Simulator)
         run: |
           cmake -S . -B build-x64-ios \
