@@ -1,0 +1,28 @@
+name: iOS Simulator Build
+
+on: [push]
+
+jobs:
+  build-ios-sim:
+    runs-on: macos-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install cmake bison flex nasm libtool automake autoconf-archive
+
+      - name: Configure (Simulator)
+        run: |
+          cmake -S . -B build-x64-ios \
+            -G "Xcode" \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT=iphonesimulator \
+            -DCMAKE_SYSTEM_PROCESSOR=x86_64 \
+            -DVCPKG_TARGET_TRIPLET=x64-ios \
+            -DWITH_VCPKG=ON
+
+      - name: Build
+        run: cmake --build build-x64-ios --config Debug
