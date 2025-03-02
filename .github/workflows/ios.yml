@@ -25,11 +25,6 @@ jobs:
             echo "vcpkg directory not found, skipping update."
           fi
 
-      - name: List workspace files
-        run: |
-          echo "Listing entire workspace:"
-          ls -laR $GITHUB_WORKSPACE
-
       - name: Configure (Simulator)
         run: |
           cmake -S . -B build-x64-ios \
@@ -40,6 +35,11 @@ jobs:
             -DCMAKE_SYSTEM_PROCESSOR=x86_64 \
             -DVCPKG_TARGET_TRIPLET=x64-ios \
             -DWITH_VCPKG=ON
+
+      - name: List workspace files
+        run: |
+          echo "Listing entire workspace:"
+          ls -laR $GITHUB_WORKSPACE
 
       - name: Build
         run: cmake --build build-x64-ios --config Debug

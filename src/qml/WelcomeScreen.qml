@@ -424,7 +424,7 @@ Page {
       Rectangle {
         Layout.leftMargin: 6
         Layout.rightMargin: 6
-        Layout.topMargin: 2
+        Layout.topMargin: 40
         Layout.bottomMargin: 2
         Layout.fillWidth: true
         Layout.maximumWidth: 410
@@ -435,12 +435,15 @@ Page {
         ColumnLayout {
           id: welcomeActions
           width: parent.width
-          spacing: 12
+          spacing: 10
 
           // (C) 2025 QField Coastal by max-romagnoli
           QfButton {
             id: projectJoinButton
             Layout.fillWidth: true
+            Layout.preferredHeight: 60
+            font.pointSize: 13
+            font.bold: true
             text: qsTr("Join Coastal Survey")
     
             onClicked: {
@@ -460,6 +463,7 @@ Page {
           QfButton {
             id: localProjectButton
             Layout.fillWidth: true
+            bgcolor: Theme.accentLightColor
             text: qsTr("Open local file")
             onClicked: {
               platformUtilities.requestStoragePermission();
@@ -470,6 +474,7 @@ Page {
           Text {
             id: recentText
             text: qsTr("Recent Projects")
+            Layout.topMargin: 50
             font.pointSize: Theme.tipFont.pointSize
             font.bold: true
             color: Theme.mainTextColor
