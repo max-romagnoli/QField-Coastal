@@ -122,6 +122,7 @@
         <file>InformationDrawer.qml</file>
         <file>QFieldGuide.qml</file>
         <file>PlantGuide.qml</file>     
+        <file>PlantIdentifyCapture.qml</file>
         <file>imports/Theme/QfProgrerssRing.qml</file>
         <file>imports/Theme/QfScrollBar.qml</file>
         <file>imports/Theme/QfSearchBar.qml</file>

@@ -126,6 +126,17 @@ class ScssCloudConnection : public QObject
     Q_INVOKABLE void downloadProjectInstance( int instanceId );
     Q_INVOKABLE void downloadProjectInstanceZipped( int instanceId );
 
+    /**
+     * \brief Identify a plant from an image file.
+     * 
+     * \param imageFilePath The local path to the image file.
+     * \param plantNetApiKey The API key for PlantNet.
+     * \param project The project to identify the plant in.
+     */
+    Q_INVOKABLE void identifyPlant(const QString &imageFilePath, 
+      const QString &plantNetApiKey,
+      const QString &project = "all");
+
   signals:
     void baseUrlChanged();
     void usernameChanged();
@@ -137,6 +148,8 @@ class ScssCloudConnection : public QObject
     void joinProjectAsGuestFailed(const QString &reason);
     void downloadInstanceFailed( const QString &reason );
     void downloadInstanceSucceeded( const QString &destinationFolder, const QString &fileName );
+    void plantIdentificationSuccess(const QJsonObject &results);
+    void plantIdentificationFailed(const QString &reason);
 
   private slots:
     //! Slot called when the login network reply is finished.

@@ -24,3 +24,4 @@ __pycache__
 /platform/android/*.xml
 /.vscode
 *~
+config.ini

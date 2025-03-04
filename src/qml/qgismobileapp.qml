@@ -1340,15 +1340,33 @@ ApplicationWindow {
 
     QfToolButton {
       id: plantGuideButton
-      iconSource: Theme.getThemeVectorIcon("ic_alert_black_24dp")  
+      iconSource: Theme.getThemeVectorIcon("ic_book_white_24dp")  
       round: true
-      bgcolor: "transparent"
+      bgcolor: Theme.accentLightColor
       anchors.right: parent.right
       anchors.top: locatorItem.bottom
       anchors.topMargin: 8
 
       onClicked: {
         plantGuidePopup.open()
+      }
+    }
+
+    PlantIdentifyCapture {
+      id: plantIdentifyCapture
+    }
+
+    QfToolButton {
+      id: plantIdentifyCaptureButton
+      iconSource: Theme.getThemeVectorIcon("ic_satisfied_white_24dp")  
+      round: true
+      bgcolor: Theme.accentLightColor
+      anchors.right: parent.right
+      anchors.top: plantGuideButton.bottom
+      anchors.topMargin: 8
+
+      onClicked: {
+        plantIdentifyCapture.open()
       }
     }
 

@@ -574,7 +574,7 @@ void QgisMobileapp::initDeclarative( QQmlEngine *engine )
 
   // (C) 2025 QField Coastal by max-romagnoli
   ScssCloudConnection *scssConnection = new ScssCloudConnection( engine );
-  scssConnection->setBaseUrl("http://127.0.0.1:8000");  // TODO: development
+  scssConnection->setBaseUrl("https://experimental-viole-tcd-scss-4c25b09f.koyeb.app");  // TODO: koyeb
   engine->rootContext()->setContextProperty( "scssConnection", scssConnection );
 }
 

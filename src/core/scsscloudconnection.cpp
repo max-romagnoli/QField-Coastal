@@ -29,6 +29,7 @@
 #include <QHttpMultiPart>
 #include <QTimer>
 #include <QStandardPaths>
+#include <QSettings>
 
 ScssCloudConnection::ScssCloudConnection( QObject *parent )
   : QObject( parent )
@@ -748,4 +749,97 @@ bool ScssCloudConnection::saveReplyToFile( QNetworkReply *reply, const QString &
     return false;
   }
   return true;
+}
+
+void ScssCloudConnection::identifyPlant(const QString &imageFilePath, 
+  const QString &plantNetApiKey,
+  const QString &project)
+{
+  // TODO: get api key from ini (will need to implement QKeychain)
+  QSettings settings("config.ini", QSettings::IniFormat);
+  QString todoApiKey = settings.value("PLANT_API_KEY").toString();
+
+  // 1) Validate inputs
+  if (imageFilePath.isEmpty() || todoApiKey.isEmpty())  // TODO:
+  {
+  emit plantIdentificationFailed("Missing image file or API key");
+  return;
+  }
+
+  QFileInfo fi(imageFilePath);
+  if (!fi.exists())
+  {
+  emit plantIdentificationFailed("Image file does not exist");
+  return;
+  }
+
+  // 2) Build the endpoint
+  // e.g. https://api.plantnet.org/v2/identify/all?api-key=API_KEY
+  QString endpoint = QString("https://my-api.plantnet.org/v2/identify/%1").arg(project);
+  QUrl requestUrl(endpoint);
+
+  QUrlQuery query;
+  query.addQueryItem("api-key", todoApiKey);
+  // add additional parameters if needed, e.g. "include-related-images"
+  // query.addQueryItem("include-related-images", "false");
+  requestUrl.setQuery(query);
+
+  QNetworkRequest request(requestUrl);
+  // If you had an Authorization header, do it here
+  // e.g.: request.setRawHeader("Authorization", "Bearer xxx");
+
+  // 3) Prepare multi-part data
+  QHttpMultiPart *multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
+
+  // We can also add 'organs' if we know them. We'll skip it for simplicity
+  // So the param name is "images"
+  QHttpPart filePart;
+  filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
+  QVariant(QString("form-data; name=\"images\"; filename=\"%1\"").arg(fi.fileName())));
+  // Common image mime type, or "image/png" if you want
+  filePart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant("image/jpeg"));
+
+  QFile *file = new QFile(imageFilePath);
+  if (!file->open(QIODevice::ReadOnly))
+  {
+  file->deleteLater();
+  multiPart->deleteLater();
+  emit plantIdentificationFailed("Failed to open image file");
+  return;
+  }
+  file->setParent(multiPart); // so it gets deleted with multiPart
+  filePart.setBodyDevice(file);
+  multiPart->append(filePart);
+
+  // 4) Post
+  QNetworkAccessManager *nam = new QNetworkAccessManager(this);
+  QNetworkReply *reply = nam->post(request, multiPart);
+  multiPart->setParent(reply);
+
+  connect(reply, &QNetworkReply::finished, this, [this, reply]()
+  {
+  reply->deleteLater();
+  if (reply->error() != QNetworkReply::NoError)
+  {
+  emit plantIdentificationFailed(reply->errorString());
+  return;
+  }
+
+  QByteArray data = reply->readAll();
+  QJsonDocument doc = QJsonDocument::fromJson(data);
+  if (doc.isNull() || !doc.isObject())
+  {
+  emit plantIdentificationFailed("Invalid JSON response");
+  return;
+  }
+  QJsonObject obj = doc.object();
+  if (obj.contains("error"))
+  {
+  emit plantIdentificationFailed(obj.value("error").toString());
+  return;
+  }
+
+  // Otherwise success
+  emit plantIdentificationSuccess(obj);
+  });
 }
