@@ -124,7 +124,7 @@ class ScssCloudConnection : public QObject
      * \param instanceId The instance ID to download.
      */
     Q_INVOKABLE void downloadProjectInstance( int instanceId );
-    Q_INVOKABLE void downloadProjectInstanceZipped( int instanceId );
+    Q_INVOKABLE void downloadProjectInstanceZipped( QString instanceId );
 
     /**
      * \brief Identify a plant from an image file.

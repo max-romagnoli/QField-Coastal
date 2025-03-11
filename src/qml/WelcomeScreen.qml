@@ -881,27 +881,23 @@ Page {
 
         // 1) Project join success => parse "jsonInfo" to get instance_id
         function onJoinProjectAsGuestSuccess(jsonInfo) {
-          // Hide the popup
-          projectJoinPopup.visible = false
-
+          
           // Possibly parse the server's JSON object
-          if (!jsonInfo.hasOwnProperty("instance_id")) {
-            // if the response doesn't have "instance_id", show error
-            feedbackLabel.text = qsTr("No instance_id in response from server.")
+          if (!jsonInfo.hasOwnProperty("instance_slug")) {
+            // if the response doesn't have "instance_slug", show error
+            feedbackLabel.text = qsTr("No instance_slug in response from server.")
             feedbackLabel.color = Theme.errorColor
             feedbackLabel.visible = true
             return
           }
 
           // We have an instance_id -> call the zipped approach
-          let instanceId = jsonInfo.instance_id
-          console.log("Joining succeeded, instanceId =", instanceId, "Now downloading as ZIP.")
-          scssConnection.downloadProjectInstanceZipped(instanceId)
-
-          // Provide user feedback
-          feedbackLabel.text = qsTr("Joining succeeded! Now downloading project data...")
+          let instanceSlug = jsonInfo.instance_slug
+          console.log("Joining succeeded, instanceSlug =", instanceSlug, "Now downloading as ZIP.")
+          feedbackLabel.text = qsTr("Joining  succeeded! Now downloading project data: ") + instanceSlug
           feedbackLabel.color = "green"
           feedbackLabel.visible = true
+          scssConnection.downloadProjectInstanceZipped(instanceSlug)
         }
 
         function onJoinProjectAsGuestFailed(errorString) {
@@ -915,6 +911,8 @@ Page {
           feedbackLabel.color = "green"
           feedbackLabel.visible = true
           console.log("Project unzipped at:", destinationFolder, "QGS file:", qgsFilename)
+
+          projectJoinPopup.visible = false
 
           iface.loadFile(destinationFolder + "/" + qgsFilename, qgsFilename)
         }
