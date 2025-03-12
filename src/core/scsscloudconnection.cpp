@@ -250,8 +250,19 @@ void ScssCloudConnection::uploadFiles( const QString &projectPath )
     return;
   }
 
+  QString compressedPath = dir.path() + QStringLiteral( "/%1.zip" ).arg( dir.dirName() );
+  if ( !JlCompress::compressDir( compressedPath, projectPath, true) )
+  {
+    qDebug() << "Project files were not zipped successfully.";
+    return;
+  }
+
+  qDebug() << "Successfully compressed project to:" << compressedPath;
+  QFile *compressedDirFile = new QFile( compressedPath );
+
+  // TODO: now that use zipped, we might want to add a filter in size
   // TODO: Might want to implement different approach (recursive or zip entire folder)
-  QStringList filters;
+ /*  QStringList filters;
   filters << "*.qgz" << "*.gpkg" << "*.png" << "*.jpg" << "*.jpeg";
 
   QFileInfoList fileInfoList = dir.entryInfoList( filters, QDir::Files | QDir::NoDotAndDotDot, QDir::Name );
@@ -260,7 +271,7 @@ void ScssCloudConnection::uploadFiles( const QString &projectPath )
   {
     qDebug() << "No recognised files found.";
     return;
-  }
+  } */
 
   // 2. Prepare the multipart form data:
   QHttpMultiPart *multiPart = new QHttpMultiPart( QHttpMultiPart::FormDataType );
@@ -271,7 +282,7 @@ void ScssCloudConnection::uploadFiles( const QString &projectPath )
                       QVariant( "form-data; name=\"json_data\"" ) );
 
   QVariantMap metaData;
-  metaData.insert( "project_name", dir.dirName() );
+  metaData.insert( "instance_slug", dir.dirName() );
   metaData.insert( "user", mUsername );
 
   QJsonDocument jsonDoc( QJsonObject::fromVariantMap( metaData ) );
@@ -279,7 +290,25 @@ void ScssCloudConnection::uploadFiles( const QString &projectPath )
   multiPart->append( textPart );
 
   // File part
-  for ( const QFileInfo &fi : fileInfoList )
+  if ( !compressedDirFile->open( QIODevice::ReadOnly ) )
+  {
+    compressedDirFile->deleteLater();
+    qDebug() << "Could not read zipped directory";
+    return;
+  }
+
+  QHttpPart filePart;
+  filePart.setHeader( QNetworkRequest::ContentDispositionHeader,
+                      QVariant( QString( "form-data; name=\"file\"; filename=\"%1.zip\"" )
+                                .arg( dir.dirName() ) ) );
+
+  filePart.setHeader( QNetworkRequest::ContentTypeHeader, QVariant( "application/octet-stream" ) );
+  filePart.setBodyDevice( compressedDirFile ); 
+
+  compressedDirFile->setParent( multiPart );
+  multiPart->append( filePart );
+
+  /* for ( const QFileInfo &fi : fileInfoList )
   {
     if ( !fi.exists() )
       continue;
@@ -301,10 +330,10 @@ void ScssCloudConnection::uploadFiles( const QString &projectPath )
 
     file->setParent( multiPart );
     multiPart->append( filePart );
-  }
+  } */
 
   // POST
-  QString endpoint = mBaseUrl + "/api/projects/upload/";
+  QString endpoint = mBaseUrl + "/api/field_manager/projects/upload/";
 
   QNetworkRequest request( endpoint );
   // request.setHeader( QNetworkRequest::ContentTypeHeader, QVariant( "multipart/form-data" ) );
@@ -332,6 +361,12 @@ void ScssCloudConnection::uploadFiles( const QString &projectPath )
       qDebug() << "Upload success:" << respDoc.object();
     }
   } );
+
+  /* if (QFile::remove(compressedPath)) {
+    qDebug() << "Temporary file removed successfully.";
+  } else {
+    qDebug() << "Failed to remove temporary file.";
+  } */
 }
 
 void ScssCloudConnection::setAuthHeader( QNetworkRequest &request ) const
@@ -350,20 +385,20 @@ void ScssCloudConnection::setAuthHeader( QNetworkRequest &request ) const
  * Download project instance using manifest 
  * */ 
 
-void ScssCloudConnection::downloadProjectInstance( int instanceId ) 
+void ScssCloudConnection::downloadProjectInstance( int instanceSlug ) 
 {
   if ( mBaseUrl.isEmpty() )
   {
-    qDebug() << "Base URL not set, cannot download instance" << instanceId;
+    qDebug() << "Base URL not set, cannot download instance" << instanceSlug;
     emit downloadInstanceFailed("Base URL not set");
     return;
   }
 
-  mCurrentInstanceId = instanceId;
+  mCurrentInstanceId = instanceSlug;
   mFilesToDownload.clear();
   mCurrentFileIndex = 0;
 
-  const QString endpoint = QStringLiteral( "/api/field_manager/project-instances/%1/manifest" ).arg( instanceId );
+  const QString endpoint = QStringLiteral( "/api/field_manager/project-instances/%1/manifest" ).arg( instanceSlug );
   const QString urlString = mBaseUrl + endpoint;
   QUrl requestUrl( urlString );
 
@@ -376,17 +411,17 @@ void ScssCloudConnection::downloadProjectInstance( int instanceId )
   connect( reply, &QNetworkReply::finished, this, &ScssCloudConnection::onManifestReplyFinished );
 }
 
-void ScssCloudConnection::downloadProjectInstanceZipped( int instanceId )
+void ScssCloudConnection::downloadProjectInstanceZipped( QString instanceSlug )
 {
   if ( mBaseUrl.isEmpty() )
   {
-    qDebug() << "Base URL not set, cannot download zipped instance" << instanceId;
+    qDebug() << "Base URL not set, cannot download zipped instance" << instanceSlug;
     emit downloadInstanceFailed("Base URL not set");
     return;
   }
 
   // For example: your server returns JSON with { "qgs_filename": "coastal.qgz", "zip_data": <BASE64 STRING> }
-  QString endpoint = QStringLiteral( "/api/field_manager/project-instances/%1/download/" ).arg( instanceId );
+  QString endpoint = QStringLiteral( "/api/field_manager/project-instances/%1/download/" ).arg( instanceSlug );
   QUrl requestUrl( mBaseUrl + endpoint );
 
   QNetworkRequest request( requestUrl );
@@ -395,7 +430,7 @@ void ScssCloudConnection::downloadProjectInstanceZipped( int instanceId )
   QNetworkAccessManager *nam = new QNetworkAccessManager( this );
   QNetworkReply *reply = nam->get( request );
 
-  connect( reply, &QNetworkReply::finished, this, [this, reply, instanceId]()
+  connect( reply, &QNetworkReply::finished, this, [this, reply, instanceSlug]()
   {
     reply->deleteLater();
 
@@ -417,7 +452,7 @@ void ScssCloudConnection::downloadProjectInstanceZipped( int instanceId )
     }
 
     QJsonObject obj = doc.object();
-    if ( !obj.contains("zip_data") || !obj.contains("qgs_filename") )
+    if ( !obj.contains("zip_data") || !obj.contains("qgs_filename") || !obj.contains("instance_slug") )
     {
       qDebug() << "JSON missing zip_data or qgs_filename";
       emit downloadInstanceFailed("Missing fields in JSON (zip_data / qgs_filename)");
@@ -428,6 +463,14 @@ void ScssCloudConnection::downloadProjectInstanceZipped( int instanceId )
     if ( qgsFilename.isEmpty() )
     {
       qgsFilename = "coastal.qgz"; // fallback
+    }
+
+    QString instanceSlug = obj.value("instance_slug").toString();
+    if ( instanceSlug.isEmpty() )
+    {
+      qDebug() << "Project instance slug is empty";
+      emit downloadInstanceFailed("Project instance slug is empty");
+      return;
     }
 
     // The ZIP data in base64 form
@@ -451,7 +494,7 @@ void ScssCloudConnection::downloadProjectInstanceZipped( int instanceId )
     if ( !dir.exists() )
       dir.mkpath( dir.path() );
 
-    QString zipFilePath = dir.path() + QStringLiteral( "/instance_%1.zip" ).arg( instanceId );
+    QString zipFilePath = dir.path() + QStringLiteral( "/%1.zip" ).arg( instanceSlug );
 
     // 3) Write the decoded ZIP bytes to disk
     QFile outFile( zipFilePath );
@@ -467,7 +510,7 @@ void ScssCloudConnection::downloadProjectInstanceZipped( int instanceId )
     qDebug() << "Saved zipped project to:" << zipFilePath;
 
     // 4) Unzip to final location
-    QString destinationFolder = dir.path() + QStringLiteral( "/instance_%1" ).arg( instanceId );
+    QString destinationFolder = dir.path() + QStringLiteral( "/%1" ).arg( instanceSlug );
 
     // Remove old if exists
     QDir destDir( destinationFolder );
