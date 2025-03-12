@@ -80,7 +80,7 @@ Page {
         value: 1
 
         Layout.margins: 6
-        Layout.topMargin: 14
+        Layout.topMargin: 40
         Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
         Layout.preferredWidth: Math.min(138, mainWindow.height / 4)
         Layout.preferredHeight: Math.min(138, mainWindow.height / 4)
@@ -442,7 +442,7 @@ Page {
             id: projectJoinButton
             Layout.fillWidth: true
             Layout.preferredHeight: 60
-            font.pointSize: 13
+            font.pixelSize: 18
             font.bold: true
             text: qsTr("Join Coastal Survey")
     

@@ -100,8 +100,9 @@ Drawer {
 
         QfToolButton {
           id: scssUploadButton
+          anchors.verticalCenter: parent.verticalCenter
           text: qsTr("Upload to SCSS Cloud")
-          iconSource: Theme.getThemeVectorIcon("ic_cloud_upload_24dp")
+          iconSource: Theme.getThemeVectorIcon("ic_cloud_project_upload_48dp")
           bgcolor: "transparent"
           onClicked: {
               const projectFile = qgisProject.fileName;
@@ -110,7 +111,7 @@ Drawer {
           }
         }
 
-        QfToolButton {
+        /* QfToolButton {
           id: cloudButton
           anchors.verticalCenter: parent.verticalCenter
           iconSource: {
@@ -179,7 +180,7 @@ Drawer {
               cloudButton.opacity = 1;
             }
           }
-        }
+        } */
       }
 
       Switch {
