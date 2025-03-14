@@ -800,12 +800,15 @@ void ScssCloudConnection::identifyPlant(const QString &imageFilePath,
 {
   // TODO: get api key from ini (will need to implement QKeychain)
   QSettings settings("config.ini", QSettings::IniFormat);
-  QString todoApiKey = settings.value("PLANT_API_KEY").toString();
+  // QString todoApiKey = settings.value("PLANT_API_KEY").toString();
+  QString todoApiKey = "";
+
+  qDebug() << "Image file path:" << imageFilePath;
 
   // 1) Validate inputs
   if (imageFilePath.isEmpty() || todoApiKey.isEmpty())  // TODO:
   {
-  emit plantIdentificationFailed("Missing image file or API key");
+  emit plantIdentificationFailed(QString("Missing image file or api key. File path: %1").arg(imageFilePath));
   return;
   }
 

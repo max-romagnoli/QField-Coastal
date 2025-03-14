@@ -296,6 +296,7 @@ Popup {
 
     function capturePhoto() {
         cameraLoader.active = true
+        platformUtilities.requestCameraPermission()
     }
 
     function attachFile() {
