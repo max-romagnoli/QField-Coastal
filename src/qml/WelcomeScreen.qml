@@ -811,7 +811,7 @@ Page {
 
         ColumnLayout {
           anchors.fill: parent
-          anchors.margins: 10
+          anchors.bottomMargin: 40
           spacing: 6
 
           Label {
@@ -865,7 +865,10 @@ Page {
 
             QfButton {
               text: qsTr("Cancel")
-              color: Theme.errorColor
+              background: Rectangle {
+                color: Theme.mainOverlayColor
+              }
+              color: Theme.darkGray
               onClicked: {
                 projectJoinPopup.visible = false
                 feedbackLabel.text = ""

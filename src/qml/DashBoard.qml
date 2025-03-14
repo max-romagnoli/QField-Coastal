@@ -98,7 +98,7 @@ Drawer {
           onClicked: showMenu()
         }
 
-        QfToolButton {
+        /* QfToolButton {
           id: scssUploadButton
           anchors.verticalCenter: parent.verticalCenter
           text: qsTr("Upload to SCSS Cloud")
@@ -108,6 +108,18 @@ Drawer {
               const projectFile = qgisProject.fileName;
               const projectFolder = projectFile.slice(0, projectFile.lastIndexOf("/"));
               scssConnection.uploadProject(projectFolder);
+          }
+        } */
+
+        QfToolButton {
+          id: scssUploadButton
+          anchors.verticalCenter: parent.verticalCenter
+          text: qsTr("Upload to SCSS Cloud")
+          iconSource: Theme.getThemeVectorIcon("ic_cloud_project_upload_48dp")
+          bgcolor: "transparent"
+          onClicked: {
+              // Open the confirmation popup instead of immediately uploading
+              uploadConfirmPopup.open()
           }
         }
 
@@ -391,4 +403,46 @@ Drawer {
     closePolicy: Popup.CloseOnEscape
     parent: mainWindow.contentItem
   }
+
+  Popup {
+        id: uploadConfirmPopup
+        modal: true
+        focus: true
+        width: Math.min(mainWindow.width * 0.8, 300)
+        height: implicitHeight
+        anchors.centerIn: parent
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 16
+            spacing: 10
+
+            Label {
+                text: qsTr("Are you sure you want to submit the data you collected?")
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
+                Layout.fillWidth: true
+            }
+
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 20
+
+                Button {
+                    text: qsTr("Cancel")
+                    onClicked: uploadConfirmPopup.close()
+                }
+
+                Button {
+                    text: qsTr("Upload")
+                    onClicked: {
+                        uploadConfirmPopup.close();
+                        var projectFile = qgisProject.fileName;
+                        var projectFolder = projectFile.slice(0, projectFile.lastIndexOf("/"));
+                        scssConnection.uploadProject(projectFolder);
+                    }
+                }
+            }
+        }
+      }
 }
